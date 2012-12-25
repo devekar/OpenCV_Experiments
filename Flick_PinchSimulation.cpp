@@ -1,4 +1,7 @@
-//#include"stdafx.h"
+//Vaibhav Devekar
+//Use of flick to change picture and pinch gesture for zoom in-out and moving image.
+//Blue for flick, blue and yellow for pinch gesture, only yellow to drag image across screen. Blue also tracks cursor position.
+
 //OpenCV Headers
 #include<cv.h>
 #include<highgui.h>
@@ -18,7 +21,8 @@ using namespace cvb;
 using namespace std;
 
 void detectFlick(CvBlobs &blobs,int screenx,int screeny);
-void detectZoom(CvBlobs &blobs,CvBlobs &blobsL);
+void detectZoom(CvBlobs &blobs,CvBlobs &blobsL,int screenx,int screeny);
+void moveImage(CvBlobs &blobsL,int screenx,int screeny);
 
 void main()
 {
@@ -84,7 +88,7 @@ void main()
 
 		//Filtering the frame
 		cvSmooth(threshy,threshy,CV_MEDIAN,7,7);
-		//cvSmooth(threshL,threshL,CV_MEDIAN,7,7);
+		cvSmooth(threshL,threshL,CV_MEDIAN,7,7);
 		//cvSmooth(threshR,threshR,CV_MEDIAN,7,7);
 
 		//Finding the blobs
@@ -102,12 +106,11 @@ void main()
 		cvFilterByArea(blobsL,20,500);
 
 		if(blobsL.size()==0) detectFlick(blobs,screenx,screeny);
-		else detectZoom(blobs,blobsL);
-		//clickRight(blobsR);
-
+		else if(blobs.size()==0) moveImage(blobsL,screenx,screeny); 
+		else detectZoom(blobs,blobsL,screenx,screeny);
+		
 		cvAdd(threshy, threshL, threshy);
-		//cvAdd(threshy, threshR, threshy);
-
+		
 		//Showing the images
 		cvShowImage("Thresh",threshy);
 		cvShowImage("Live",frame);
@@ -132,7 +135,7 @@ void detectFlick(CvBlobs &blobs,int screenx,int screeny)
 
 	int x=0,y=0,x1,y1,xt,yt;
 
-
+	mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, 0);
 
 
 	for (CvBlobs::const_iterator it=blobs.begin(); it!=blobs.end(); ++it)
@@ -150,7 +153,7 @@ void detectFlick(CvBlobs &blobs,int screenx,int screeny)
 		xt=(int)(x1*screenx/w);
 		yt=(int)(y1*screeny/h);
 		if(xt>0 && yt>0) {x=xt;y=yt;}
-
+		SetCursorPos(xt,yt);
 	}
 
 	vel=(x-x2)/(timestamp-timestamp2);
@@ -184,20 +187,26 @@ void detectFlick(CvBlobs &blobs,int screenx,int screeny)
 }
 
 
-void detectZoom(CvBlobs &blobs,CvBlobs &blobsL)
+void detectZoom(CvBlobs &blobs,CvBlobs &blobsL,int screenx,int screeny)
 {
 	static double dist2=0,moment10,moment01,area;
 	double dist1=0;
 	int x1=0,x2=0,y1=0,y2=0;
+	mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, 0);
 
 	for (CvBlobs::const_iterator it=blobs.begin(); it!=blobs.end(); ++it)
 	{
 		moment10 = it->second->m10;
 		moment01 = it->second->m01;
 		area = it->second->area;
-
 		x1 = moment10/area;
+
+
 		y1 = moment01/area;
+
+		int x=(int)(x1*screenx/w);
+		int y=(int)(y1*screeny/h);
+		SetCursorPos(x,y);
 	}
 
 	for (CvBlobs::const_iterator it=blobsL.begin(); it!=blobsL.end(); ++it)
@@ -223,6 +232,35 @@ void detectZoom(CvBlobs &blobs,CvBlobs &blobsL)
 			cout<<"Minus Key\n";
 		}
 		dist2=dist1;
+	}
+
+}
+
+
+
+void moveImage(CvBlobs &blobsL,int screenx,int screeny)
+{
+	static double moment10,moment01,area;
+	double dist1=0;
+	int x=0,y=0;
+
+	for (CvBlobs::const_iterator it=blobsL.begin(); it!=blobsL.end(); ++it)
+	{
+		moment10 = it->second->m10;
+		moment01 = it->second->m01;
+		area = it->second->area;
+
+		x = moment10/area;
+		y = moment01/area;
+
+		x=(int)(x*screenx/w);
+		y=(int)(y*screeny/h);
+
+		if(x>0 && y>0){
+			mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0);
+			SetCursorPos(x,y);
+			
+		}
 	}
 
 }
